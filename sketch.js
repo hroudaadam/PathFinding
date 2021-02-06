@@ -6,8 +6,7 @@ let vertexStates;
 let graph = [];
 let countXCells;
 let countYCells;
-let astar;
-let dijkstra;
+let searchAlgo;
 
 function setup() {
 
@@ -25,19 +24,15 @@ function setup() {
     let startVert = randomStart();
     let endVert = randomEnd();
 
-    dijkstra = new Dijkstra(startVert, endVert);
-    astar = new AStar(startVert, endVert);
-
+    searchAlgo = new AStar(startVert, endVert);
     showGraph();
 }
 
 function draw() {
-    dijkstra.update();
-    astar.update();
-    if (dijkstra.finished && astar.finished) {
+    searchAlgo.update();
+    if (searchAlgo.finished) {
         noLoop();
-        dijkstra.showResult();
-        astar.showResult();
+        searchAlgo.showResult();
     }
 }
 
@@ -131,8 +126,8 @@ function initColors() {
         color1: color(42, 237, 53),
         color2: color(230, 57, 70),
         color3: color(91, 93, 94),
-        color4: color(12, 182, 238, 90),
-        color5: color(234, 239, 50, 90)
+        color4: color(12, 182, 238),
+        color5: color(234, 239, 50)
     };
 }
 
@@ -296,6 +291,11 @@ class AStar {
                 return;
             }
 
+            if (current !== this.startVertex) {
+                current.show(colors.color4);
+            }
+
+
             // uzavření současného vrcholu
             let index = this.openedVerteces.indexOf(current);
             this.openedVerteces.splice(index, 1);
@@ -325,14 +325,12 @@ class AStar {
                 }
 
                 if (currIsBetter) {
-                    neighbour.show(colors.color4);
                     neighbour.prev = current;
                     neighbour.g = currG;
                     neighbour.h = this.heuristic(neighbour);
                     neighbour.f = neighbour.g + neighbour.h;
                 }
             }
-
         }
         else {
             this.finished = true;

@@ -6,3 +6,11 @@
 body {
     margin: 10px;
 }
+
+.flex {
+    display: flex;
+}
+
+.canvas-wrapper {
+    margin: 5px;
+}

@@ -1,38 +1,50 @@
 const width = 600;
 const height = 400;
-const cellSize = 30;
+const cellSize = 20;
 let colors;
 let vertexStates;
 let graph = [];
 let countXCells;
 let countYCells;
+let astar;
 let dijkstra;
 
 function setup() {
-    
+
     initColors();
     initVertexStates();
-    
-    createCanvas(width, height);
+
+    let canvas = createCanvas(width, height);
+    canvas.parent("sketch");
+
     background(colors.white);
-    frameRate(10);
-    
+    frameRate(20);
+
     graph = createGraph();
-    dijkstra = new Dijkstra(graph[3][0], graph[4][6]);
+
+    let startVert = randomStart();
+    let endVert = randomEnd();
+
+    dijkstra = new Dijkstra(startVert, endVert);
+    astar = new AStar(startVert, endVert);
+
     showGraph();
 }
 
 function draw() {
     dijkstra.update();
-    if (dijkstra.finished) {
+    astar.update();
+    if (dijkstra.finished && astar.finished) {
         noLoop();
         dijkstra.showResult();
+        astar.showResult();
     }
 }
 
 function createGraph() {
     countXCells = Math.floor(width / cellSize) - 1;
     countYCells = Math.floor(height / cellSize) - 1;
+
 
     let output = [];
     for (let y = 0; y < countYCells; y++) {
@@ -41,9 +53,38 @@ function createGraph() {
             rectMode(CORNER);
             let vertex = new Vertex(x, y, cellSize);
             output[y].push(vertex);
+            if (int(random(4)) % 4 == 0) {
+                vertex.state = vertexStates.blocked;
+            }
         }
     }
     return output;
+}
+
+function randomStart() {
+    let x;
+    let y;
+
+    do {
+        x = int(random(countXCells));
+        y = int(random(countYCells));
+    } while (graph[y][x].state === vertexStates.end);
+
+    graph[y][x].state = vertexStates.start;
+    return graph[y][x];
+}
+
+function randomEnd() {
+    let x;
+    let y;
+
+    do {
+        x = int(random(countXCells));
+        y = int(random(countYCells));
+    } while (graph[y][x].state === vertexStates.start);
+
+    graph[y][x].state = vertexStates.end;
+    return graph[y][x];
 }
 
 function showGraph() {
@@ -87,11 +128,11 @@ function initColors() {
     colors = {
         black: color(0, 0, 0),
         white: color(255, 255, 255),
-        color1: color(42, 157, 143),
+        color1: color(42, 237, 53),
         color2: color(230, 57, 70),
-        color3: color(141, 153, 174),
-        color4: color(204, 219, 253),
-        color5: color(72, 202, 228),
+        color3: color(91, 93, 94),
+        color4: color(12, 182, 238, 90),
+        color5: color(234, 239, 50, 90)
     };
 }
 
@@ -110,6 +151,13 @@ class Vertex {
         this.y = y;
         this.size = size;
         this.state = vertexStates.empty;
+        this.prev = null;
+
+        this.dist = Number.MAX_SAFE_INTEGER;
+
+        this.g = null; // dálka aktuální optimální cesty
+        this.f = null; // předpokládaná délka cesty mezi startem a cílem jdoucí přes vrchol
+        this.h = null; // heuristický odhad k cíli
     }
 
     show(color = null) {
@@ -151,21 +199,16 @@ class Dijkstra {
         for (let y = 0; y < countYCells; y++) {
             for (let x = 0; x < countXCells; x++) {
                 let vertex = graph[y][x];
-                vertex.dist = Number.MAX_SAFE_INTEGER;
                 this.openedVerteces.push(vertex);
             }
         }
 
         // nastavení vlastností startového vrcholu
         this.startVertex.dist = 0;
-        this.startVertex.prev = null;
-        this.startVertex.state = vertexStates.start;
         // uzavření startového vrcholu
         this.closedVerteces.push(this.startVertex);
         let index = this.openedVerteces.indexOf(this.startVertex);
         this.openedVerteces.splice(index, 1);
-        // nastavení koncového vrcholu
-        this.endVertex.state = vertexStates.end;
     }
 
     update() {
@@ -173,8 +216,9 @@ class Dijkstra {
             // kontrola sousedních vrcholů
             let neightbors = getNeightbors(this.current);
             for (let neightbor of neightbors) {
-                // sousední vrchol ještě není uzavřený
-                if (this.closedVerteces.indexOf(neightbor) < 0) {
+                // sousední vrchol ještě není uzavřený A ZÁROVEŃ není blokovaný
+                if ((this.closedVerteces.indexOf(neightbor) < 0) && neightbor.state !== vertexStates.blocked) {
+
                     let altDist = this.current.dist + 1;
                     // nová vzdálenost je lepší než uložená
                     if (altDist < neightbor.dist) {
@@ -207,6 +251,9 @@ class Dijkstra {
             // opakovat pro nejbližšího souseda
             this.current = nearestVertex;
         }
+        else {
+            this.finished = true;
+        }
     }
 
     showResult() {
@@ -215,6 +262,96 @@ class Dijkstra {
             prev.show(colors.color5);
             prev = prev.prev;
         }
+    }
+}
 
+class AStar {
+    constructor(stVert, enVert) {
+        this.startVertex = stVert;
+        this.endVertex = enVert;
+        this.finished = false;
+        this.current = this.startVertex;
+        this.openedVerteces = [];
+        this.closedVertece = [];
+
+        this.startVertex.g = 0;
+        this.startVertex.h = this.heuristic(this.startVertex);
+        this.startVertex.f = this.startVertex.h;
+
+        this.openedVerteces.push(this.startVertex);
+    }
+
+    update() {
+        if (this.openedVerteces.length > 0) {
+            // otevřený vrchol s nejmenší hodnotou F
+            let current = this.openedVerteces[0];
+            for (let vertex of this.openedVerteces) {
+                if (vertex.f < current.f) {
+                    current = vertex;
+                }
+            }
+
+            if (current === this.endVertex) {
+                this.finished = true;
+                return;
+            }
+
+            // uzavření současného vrcholu
+            let index = this.openedVerteces.indexOf(current);
+            this.openedVerteces.splice(index, 1);
+            this.closedVertece.push(current);
+
+            let neighbours = getNeightbors(current);
+            for (let neighbour of neighbours) {
+                // pokud soused je v uzavřených NEBO je blokovaný
+                if ((this.closedVertece.indexOf(neighbour) > -1) || 
+                     neighbour.state === vertexStates.blocked) {
+                    continue;
+                }
+
+                let currG = current.g + 1;
+
+                let currIsBetter;
+                // pokud soused není v otevřených
+                if (this.openedVerteces.indexOf(neighbour) < 0) {
+                    this.openedVerteces.push(neighbour);
+                    currIsBetter = true;
+                }
+                else if (currG < neighbour.g) {
+                    currIsBetter = true;
+                }
+                else {
+                    currIsBetter = false;
+                }
+
+                if (currIsBetter) {
+                    neighbour.show(colors.color4);
+                    neighbour.prev = current;
+                    neighbour.g = currG;
+                    neighbour.h = this.heuristic(neighbour);
+                    neighbour.f = neighbour.g + neighbour.h;
+                }
+            }
+
+        }
+        else {
+            this.finished = true;
+        }
+
+    }
+
+    heuristic(vertex) {
+        let a = Math.abs(vertex.x - this.endVertex.x);
+        let b = Math.abs(vertex.y - this.endVertex.y);
+        let c = Math.sqrt(Math.pow(a,2) + Math.pow(b, 2));
+        return c;
+    }
+
+    showResult() {
+        let prev = this.endVertex.prev;
+        while (prev.prev) {
+            prev.show(colors.color5);
+            prev = prev.prev;
+        }
     }
 }

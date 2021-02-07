@@ -1,59 +1,106 @@
-const width = 600;
-const height = 400;
-const cellSize = 20;
+let width = 600;
+let height = 400;
+const cellSize = 30;
 let colors;
 let vertexStates;
 let graph = [];
 let countXCells;
 let countYCells;
-let searchAlgo;
+let simIsRunning = false;
+
+let startVertex;
+let endVertex;
+let algorithm;
+
+let selectAlgo;
+let runButton;
+let newButton;
 
 function setup() {
-
-    initColors();
+    width = windowWidth * 0.7;
+    height = windowHeight * 0.7;
+    frameRate(20);
+    createControls();
     initVertexStates();
+    initColors();
 
     let canvas = createCanvas(width, height);
     canvas.parent("sketch");
 
-    background(colors.white);
-    frameRate(20);
-
-    graph = createGraph();
-
-    let startVert = randomStart();
-    let endVert = randomEnd();
-
-    searchAlgo = new AStar(startVert, endVert);
-    showGraph();
+    newButtonClick();
 }
 
 function draw() {
-    searchAlgo.update();
-    if (searchAlgo.finished) {
-        noLoop();
-        searchAlgo.showResult();
+    if (simIsRunning) {
+        algorithm.update();
+        if (algorithm.finished) {
+            algorithm.showResult();
+            simIsRunning = false;
+        }
     }
 }
+
+
+
+function createControls() {
+    textAlign(CENTER);
+    background(200);
+    selectAlgo = createSelect();
+    selectAlgo.position(15, 470);
+    selectAlgo.option('Dijkstra');
+    selectAlgo.option('A*');
+    selectAlgo.selected("Dijkstra")
+
+    runButton = createButton("Start");
+    runButton.position(100, 470);
+    runButton.mousePressed(runButtonClick)
+
+    newButton = createButton("New graph");
+    newButton.position(200, 470);
+    newButton.mousePressed(newButtonClick);
+}
+
+
+function runButtonClick() {
+    if (selectAlgo.value() === "Dijkstra") {
+        algorithm = new Dijkstra(startVertex, endVertex);
+    }
+    else if (selectAlgo.value() === "A*") {
+        algorithm = new AStar(startVertex, endVertex);
+    }
+    background(colors.white);
+    showGraph();
+    simIsRunning = true;
+}
+
+function newButtonClick() {
+    createGraph();
+    startVertex = randomStart();
+    endVertex = randomEnd();
+    background(colors.white);
+    showGraph();
+
+    // searchAlgo = new Dijkstra(startVert, endVert);
+}
+
 
 function createGraph() {
     countXCells = Math.floor(width / cellSize) - 1;
     countYCells = Math.floor(height / cellSize) - 1;
 
 
-    let output = [];
+    graph = [];
     for (let y = 0; y < countYCells; y++) {
-        output.push([]);
+        graph.push([]);
         for (let x = 0; x < countXCells; x++) {
             rectMode(CORNER);
             let vertex = new Vertex(x, y, cellSize);
-            output[y].push(vertex);
+            graph[y].push(vertex);
             if (int(random(4)) % 4 == 0) {
                 vertex.state = vertexStates.blocked;
             }
         }
     }
-    return output;
 }
 
 function randomStart() {
@@ -304,8 +351,8 @@ class AStar {
             let neighbours = getNeightbors(current);
             for (let neighbour of neighbours) {
                 // pokud soused je v uzavřených NEBO je blokovaný
-                if ((this.closedVertece.indexOf(neighbour) > -1) || 
-                     neighbour.state === vertexStates.blocked) {
+                if ((this.closedVertece.indexOf(neighbour) > -1) ||
+                    neighbour.state === vertexStates.blocked) {
                     continue;
                 }
 
@@ -341,7 +388,7 @@ class AStar {
     heuristic(vertex) {
         let a = Math.abs(vertex.x - this.endVertex.x);
         let b = Math.abs(vertex.y - this.endVertex.y);
-        let c = Math.sqrt(Math.pow(a,2) + Math.pow(b, 2));
+        let c = Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2));
         return c;
     }
 

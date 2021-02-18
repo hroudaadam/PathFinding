@@ -40,27 +40,26 @@ function draw() {
     }
 }
 
-
-
+// create controls
 function createControls() {
     textAlign(CENTER);
     background(200);
     selectAlgo = createSelect();
-    selectAlgo.position(15, 470);
+    selectAlgo.position(15, height);
     selectAlgo.option('Dijkstra');
     selectAlgo.option('A*');
     selectAlgo.selected("Dijkstra")
 
     runButton = createButton("Start");
-    runButton.position(100, 470);
+    runButton.position(100, height);
     runButton.mousePressed(runButtonClick)
 
     newButton = createButton("New graph");
-    newButton.position(200, 470);
+    newButton.position(200, height);
     newButton.mousePressed(newButtonClick);
 }
 
-
+// run button click
 function runButtonClick() {
     if (selectAlgo.value() === "Dijkstra") {
         algorithm = new Dijkstra(startVertex, endVertex);
@@ -73,17 +72,17 @@ function runButtonClick() {
     simIsRunning = true;
 }
 
+// new button click
 function newButtonClick() {
     createGraph();
     startVertex = randomStart();
     endVertex = randomEnd();
     background(colors.white);
     showGraph();
-
-    // searchAlgo = new Dijkstra(startVert, endVert);
 }
 
 
+// create new graph
 function createGraph() {
     countXCells = Math.floor(width / cellSize) - 1;
     countYCells = Math.floor(height / cellSize) - 1;
@@ -103,6 +102,7 @@ function createGraph() {
     }
 }
 
+// get random start
 function randomStart() {
     let x;
     let y;
@@ -116,6 +116,7 @@ function randomStart() {
     return graph[y][x];
 }
 
+// get random end
 function randomEnd() {
     let x;
     let y;
@@ -129,6 +130,7 @@ function randomEnd() {
     return graph[y][x];
 }
 
+// render graph
 function showGraph() {
     for (let y = 0; y < countYCells; y++) {
         for (let x = 0; x < countXCells; x++) {
@@ -137,28 +139,29 @@ function showGraph() {
     }
 }
 
+// get neightbors of vertex
 function getNeightbors(vertex) {
     let neightbors = [];
 
-    // S
+    // N
     if (vertex.y > 0) {
         let neightbor = graph[vertex.y - 1][vertex.x];
         neightbors.push(neightbor);
     }
 
-    // V
+    // E
     if (vertex.x < countXCells - 1) {
         let neightbor = graph[vertex.y][vertex.x + 1];
         neightbors.push(neightbor);
     }
 
-    // J
+    // S
     if (vertex.y < countYCells - 1) {
         let neightbor = graph[vertex.y + 1][vertex.x];
         neightbors.push(neightbor);
     }
 
-    // Z
+    // W
     if (vertex.x > 0) {
         let neightbor = graph[vertex.y][vertex.x - 1];
         neightbors.push(neightbor);
@@ -166,6 +169,7 @@ function getNeightbors(vertex) {
     return neightbors;
 }
 
+// initialize colors const
 function initColors() {
     colors = {
         black: color(0, 0, 0),
@@ -178,6 +182,7 @@ function initColors() {
     };
 }
 
+// init vertex states const
 function initVertexStates() {
     vertexStates = {
         empty: 0,
@@ -187,6 +192,7 @@ function initVertexStates() {
     };
 }
 
+// vertex class
 class Vertex {
     constructor(x, y, size) {
         this.x = x;
@@ -195,13 +201,18 @@ class Vertex {
         this.state = vertexStates.empty;
         this.prev = null;
 
+        // current distance to this vertex from the start
         this.dist = Number.MAX_SAFE_INTEGER;
 
-        this.g = null; // dálka aktuální optimální cesty
-        this.f = null; // předpokládaná délka cesty mezi startem a cílem jdoucí přes vrchol
-        this.h = null; // heuristický odhad k cíli
+        // lenght of current optimal path
+        this.g = null;
+        // presuming lenght of path between start and end going through this vertex
+        this.f = null;
+        // heuristic guess to end
+        this.h = null;
     }
 
+    // render vertex
     show(color = null) {
         if (color) {
             fill(color);
@@ -227,6 +238,7 @@ class Vertex {
     }
 }
 
+// dijkstra algorithm
 class Dijkstra {
 
     constructor(stVert, enVert) {
@@ -237,7 +249,7 @@ class Dijkstra {
         this.current = this.startVertex;
         this.finished = false;
 
-        // naplnění polí
+        // fill open verteces
         for (let y = 0; y < countYCells; y++) {
             for (let x = 0; x < countXCells; x++) {
                 let vertex = graph[y][x];
@@ -245,24 +257,25 @@ class Dijkstra {
             }
         }
 
-        // nastavení vlastností startového vrcholu
+        // init properties
         this.startVertex.dist = 0;
-        // uzavření startového vrcholu
+        // close start vertex
         this.closedVerteces.push(this.startVertex);
         let index = this.openedVerteces.indexOf(this.startVertex);
         this.openedVerteces.splice(index, 1);
     }
 
+    // step of dijkstra
     update() {
         if (this.openedVerteces.length > 0) {
-            // kontrola sousedních vrcholů
+            // neightbors
             let neightbors = getNeightbors(this.current);
             for (let neightbor of neightbors) {
-                // sousední vrchol ještě není uzavřený A ZÁROVEŃ není blokovaný
+                //  neightbor is still open && neightbor is not blocked
                 if ((this.closedVerteces.indexOf(neightbor) < 0) && neightbor.state !== vertexStates.blocked) {
 
                     let altDist = this.current.dist + 1;
-                    // nová vzdálenost je lepší než uložená
+                    // new distance is better then current
                     if (altDist < neightbor.dist) {
                         neightbor.dist = altDist;
                         neightbor.prev = this.current;
@@ -270,7 +283,7 @@ class Dijkstra {
                 }
             }
 
-            // výběr nejbližšího vrcholu
+            // select nearest vertex
             let nearestVertex = this.openedVerteces[0];
             for (let vertex of this.openedVerteces) {
                 if (vertex.dist < nearestVertex.dist) {
@@ -285,12 +298,12 @@ class Dijkstra {
 
             nearestVertex.show(colors.color4);
 
-            // uzavření nejbližšího souseda
+            // close nearest vertex
             this.closedVerteces.push(nearestVertex);
             let index = this.openedVerteces.indexOf(nearestVertex);
             this.openedVerteces.splice(index, 1);
 
-            // opakovat pro nejbližšího souseda
+            // repeat for nearest vertex
             this.current = nearestVertex;
         }
         else {
@@ -298,6 +311,7 @@ class Dijkstra {
         }
     }
 
+    // render result
     showResult() {
         let prev = this.endVertex.prev;
         while (prev.prev) {
@@ -307,6 +321,7 @@ class Dijkstra {
     }
 }
 
+// a* algortihm
 class AStar {
     constructor(stVert, enVert) {
         this.startVertex = stVert;
@@ -325,7 +340,7 @@ class AStar {
 
     update() {
         if (this.openedVerteces.length > 0) {
-            // otevřený vrchol s nejmenší hodnotou F
+            // open vertex with smallest F
             let current = this.openedVerteces[0];
             for (let vertex of this.openedVerteces) {
                 if (vertex.f < current.f) {
@@ -342,15 +357,14 @@ class AStar {
                 current.show(colors.color4);
             }
 
-
-            // uzavření současného vrcholu
+            // close current vertex
             let index = this.openedVerteces.indexOf(current);
             this.openedVerteces.splice(index, 1);
             this.closedVertece.push(current);
 
             let neighbours = getNeightbors(current);
             for (let neighbour of neighbours) {
-                // pokud soused je v uzavřených NEBO je blokovaný
+                // if neightbor is close || neightbor is blocked
                 if ((this.closedVertece.indexOf(neighbour) > -1) ||
                     neighbour.state === vertexStates.blocked) {
                     continue;
@@ -359,7 +373,7 @@ class AStar {
                 let currG = current.g + 1;
 
                 let currIsBetter;
-                // pokud soused není v otevřených
+                // if neightbor is not open
                 if (this.openedVerteces.indexOf(neighbour) < 0) {
                     this.openedVerteces.push(neighbour);
                     currIsBetter = true;
@@ -385,6 +399,7 @@ class AStar {
 
     }
 
+    // heuristic function
     heuristic(vertex) {
         let a = Math.abs(vertex.x - this.endVertex.x);
         let b = Math.abs(vertex.y - this.endVertex.y);
@@ -392,6 +407,7 @@ class AStar {
         return c;
     }
 
+    // render result
     showResult() {
         let prev = this.endVertex.prev;
         while (prev.prev) {
